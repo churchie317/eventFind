@@ -2,10 +2,10 @@ html, body {
     height: 100%;
     margin: 0;
     padding: 0;
-    background-color: rgb(218,165,32)
+    background-color: c2c4c6;
   }
   #map {
-    height: 75%;
+    height: 100%;
     margin: 8vw;
     margin-top: 0;
     border-radius: 10px;
