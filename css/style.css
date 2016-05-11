@@ -2,7 +2,7 @@ html, body {
     height: 100%;
     margin: 0;
     padding: 0;
-    background-color: #c2c4c6;
+    background-color: #fe7762;
   }
   #map {
     height: 100%;
@@ -12,49 +12,50 @@ html, body {
   }
   #entry_container {
       text-align: center;
-      background-color: white;
-      color: Black;
+      background-color: #ffa424;
+      color: White;
       font-family: "Cabin", sans-serif;
       font-weight: bold;
       margin: 8vw;
       margin-top: 2vw;
-      margin-bottom: 15px;
-      border: solid;
+      margin-bottom: 20px;
+      /*border: solid;*/
       border-radius: 10px;
       padding: 1;
-      box-shadow: 0px 3px 3px black;
+      /*box-shadow: 0px 3px 3px black;*/
   }
   #address {
       font-size: 16px;
-      border: solid;
+      /*border: solid;
       border-radius:10px;
-      box-shadow: 0px 3px 3px grey;
+      box-shadow: 0px 3px 3px grey;*/
   }
   #address:focus {
       outline:0;
   }
   #radius{
       font-size: 16px;
-      border:solid;
-      box-shadow: 0px 3px 3px grey;
+      /*border:solid;
+      box-shadow: 0px 3px 3px grey;*/
   }
   #radius:focus {
       outline:0;
   }
   #submit{
+      font-color: White;
       font-size: 16px;
-      border: solid;
+      /*border: solid;*/
       border-radius: 10px;
-      background-color: white;
-      box-shadow: 0px 3px 3px grey;
+      background-color: #6a67ce;
+      /*box-shadow: 0px 3px 3px grey;*/
   }
   #submit:hover{
-      background-color: rgb(220,220,220);
+      background-color: #6a67ce;
   }
   #submit:active {
-      background-color: rgb(220,220,220);
-      box-shadow: 0px 0px 0px;
-      transform: translateY(3px);
+      background-color: #4f4da7;
+      /*box-shadow: 0px 0px 0px;
+      transform: translateY(3px);*/
   }
   #submit:focus {
       outline:0;
