@@ -122,7 +122,7 @@
         lng = addressObject.results[0].geometry.location.lng;
         var reverseGeocoderCall = "https://maps.googleapis.com/maps/api/geocode/json?latlng=" + lat + "," + lng;
         httpGetAsync(reverseGeocoderCall, function(result) {
-            getTicketmasterApiRequest(result);
+            ticketmasterApiRequest(result);
         });
       };
 
@@ -138,12 +138,6 @@
 
       // set button to get DOM element with id='submit'
       var button = document.getElementById("submit");
-      var textEntry = document.getElementById("address");
-      textEntry.addEventListener("keypress", function(event) {
-      	if (event.keyCode == 13) {
-      		button.click();
-      	};
-      });
 
       // set MapDiv to get DOM element with id='map'
       var mapDiv = document.getElementById('map');
@@ -174,35 +168,6 @@
         geocoder.geocode({'address': address}, function(results, status) {
           if (status === google.maps.GeocoderStatus.OK) {
             resultsMap.setCenter(results[0].geometry.location);
-            //Get radius selection for switch statement
-            var radiusSelector = document.getElementById("radius");
-            var searchRadius = radiusSelector[radiusSelector.selectedIndex].value;
-            var radius;
-            //converts the miles selected into meters
-            switch (searchRadius) {
-            	case "5":
-            		radius = 8047;
-            		break;
-            	case "10": 
-            		radius = 16093;
-            		break;
-            	case "15":
-            		radius = 24140;
-            		break;
-            	case "20":
-            		radius = 32187;
-            		break;
-            	};
-            // creates an invisible circle on the map with radius of selected radius
-    	      var circle = new google.maps.Circle ({
-    		      radius: radius,
-    		      center: results[0].geometry.location,
-    	    	  fillOpacity: 0,
-    		      strokeOpacity: 0,
-    		      map: resultsMap,
-    		    });
-    		    // sets zoom to closest zoom level that includes full circle radius
-    	      resultsMap.fitBounds(circle.getBounds());
             var marker = new google.maps.Marker({
               map: resultsMap,
               position: results[0].geometry.location
@@ -249,12 +214,9 @@
           return displayString;
       };
 
-      var createNewInfoWindow = function(contentString) {
-      };
-
       var marker;
 
-      var getTicketmasterApiRequest = function(result) {
+      var ticketmasterApiRequest = function(result) {
         var postalCode = getPostalCode(result);
         console.log("postalCode: " + postalCode);
         var ticketmasterRequest = buildTicketmasterRequest(postalCode, todayDateFormatted, tomorrowDateFormatted, ticketmasterAPIKey);
@@ -273,6 +235,7 @@
               return event;
             };
           }).forEach(function(event) {
+            // iterate through each element in the response object array and create a new location marker for each element
             marker = new google.maps.Marker({
               position: {
                 lat: Number(event._embedded.venues[0].location.latitude),
@@ -281,11 +244,9 @@
               map: map,
               title: event.classifications[0].genre.name,
             });
+            // iterate through each element in the response object array and create a new infowindow for each element
             var infowindow = new google.maps.InfoWindow({
               content: createEventString(event),
-            });
-            marker.addListener('click', function() {
-              infowindow.close(map, marker);
             });
             marker.addListener('click', function() {
               infowindow.open(map, marker);
@@ -302,7 +263,7 @@
         });
         httpGetAsync(googleGeocoderCall, function(result) {
           if (checkPostalCodeExists(result)) {
-            getTicketmasterApiRequest(result);
+            ticketmasterApiRequest(result);
           } else {
             reverseGeocoderLookup(result);
           }
