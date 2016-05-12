@@ -79,7 +79,7 @@
       var todayDateFormatted = "2016-05-13T00:00:00Z"// formatDate(getTodayDate());
       var tomorrowDateFormatted = "2016-05-15T00:00:00Z"// formatDate(getTomorrowDate());
 
-      // parse user input from textbox into array delimited by space
+      // parse user input from textbox into array delimited by space-character
       var parseInput = function(input) {
         return input.split(" ");
       };
@@ -116,14 +116,11 @@
       };
 
       // use latlong coordinates to retrieve human-readable address
-      var reverseGeocoderLookup = function(addressJSON) {
+      var reverseGeocoderQueryAddress = function(addressJSON) {
         var addressObject = JSON.parse(addressJSON);
         lat = addressObject.results[0].geometry.location.lat;
         lng = addressObject.results[0].geometry.location.lng;
-        var reverseGeocoderCall = "https://maps.googleapis.com/maps/api/geocode/json?latlng=" + lat + "," + lng;
-        httpGetAsync(reverseGeocoderCall, function(result) {
-            getTicketmasterApiRequest(result);
-        });
+        return "https://maps.googleapis.com/maps/api/geocode/json?latlng=" + lat + "," + lng;
       };
 
       // retrieve ZIP code from Google Geocoder response JSON
@@ -247,47 +244,45 @@
           return displayString;
       };
 
-      var marker;
+      var ticketmasterApiResponse;
+      //var marker;
 
-      var getTicketmasterApiRequest = function(result) {
+      var getTicketmasterApiAddress = function(result) {
         var postalCode = getPostalCode(result);
-        console.log("postalCode: " + postalCode);
-        var ticketmasterRequest = buildTicketmasterRequest(postalCode, todayDateFormatted, tomorrowDateFormatted, ticketmasterAPIKey);
-        console.log(ticketmasterRequest);
-        httpGetAsync(ticketmasterRequest, function(result) {
-          // parse Ticketmaster API response
-          var ticketmasterApiResponse = JSON.parse(result);
-          console.log(ticketmasterApiResponse);
-          // tell user if no results found
-          if (ticketmasterApiResponse._embedded === undefined) {
-            document.getElementById("location-info").innerHTML = "NO RESULTS FOR: " + userAddress;
-            };
-          // filter uninteresting events like event parking from events list
-          var events = ticketmasterApiResponse._embedded.events.filter(function(event) {
-            if (event.classifications[0].genre.name !== "Undefined") {
-              return event;
-            };
-          }).forEach(function(event) {
-            marker = new google.maps.Marker({
-              position: {
-                lat: Number(event._embedded.venues[0].location.latitude),
-                lng: Number(event._embedded.venues[0].location.longitude),
-              },
-              map: map,
-              title: event.classifications[0].genre.name,
-            });
-            var infowindow = new google.maps.InfoWindow({
-              content: createEventString(event),
-            });
-            marker.addListener('click', function() {
-              infowindow.close(map, marker);
-            });
-            marker.addListener('click', function() {
-              infowindow.open(map, marker);
-            });
+        return buildTicketmasterRequest(postalCode, todayDateFormatted, tomorrowDateFormatted, ticketmasterAPIKey);
+      };
+
+      var parseTicketmasterApiResponse = function(result) {
+        // parse Ticketmaster API response
+        ticketmasterApiResponse = JSON.parse(result);
+        console.log(ticketmasterApiResponse);
+        // tell user if no results found
+        if (ticketmasterApiResponse._embedded === undefined) {
+          document.getElementById("location-info").innerHTML = "NO RESULTS FOR: " + userAddress;
+          };
+        // filter uninteresting events like event parking from events list
+        var events = ticketmasterApiResponse._embedded.events.filter(function(event) {
+          if (event.classifications[0].genre.name !== "Undefined") {
+            return event;
+          };
+        }).forEach(function(event) {
+          var marker = new google.maps.Marker({
+            position: {
+              lat: Number(event._embedded.venues[0].location.latitude),
+              lng: Number(event._embedded.venues[0].location.longitude),
+            },
+            map: map,
+            title: event.classifications[0].genre.name,
+          });
+          console.log("made it poop");
+          var infowindow = new google.maps.InfoWindow({
+            content: createEventString(event),
+          });
+          marker.addListener('click', function() {
+            infowindow.open(map, marker);
           });
         });
-      }
+      };
 
       button.addEventListener('click', initMap);
       button.addEventListener('click', function() {
@@ -297,11 +292,15 @@
         });
         httpGetAsync(googleGeocoderCall, function(result) {
           if (checkPostalCodeExists(result)) {
-            getTicketmasterApiRequest(result);
-          } else {
-            reverseGeocoderLookup(result);
+            httpGetAsync(getTicketmasterApiAddress(result), parseTicketmasterApiResponse);
           }
-        });
+          else {
+            httpGetAsync(reverseGeocoderQueryAddress(result), function(result) {
+              console.log("made it here");
+              httpGetAsync(getTicketmasterApiAddress(result), parseTicketmasterApiResponse);
+            });
+          };
+        })
       });
       button.addEventListener('click', clearText);
 
