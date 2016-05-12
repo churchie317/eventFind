@@ -264,22 +264,24 @@
           if (event.classifications[0].genre.name !== "Undefined") {
             return event;
           };
-        }).forEach(function(event) {
-          var marker = new google.maps.Marker({
-            position: {
-              lat: Number(event._embedded.venues[0].location.latitude),
-              lng: Number(event._embedded.venues[0].location.longitude),
-            },
-            map: map,
-            title: event.classifications[0].genre.name,
-          });
-          console.log("made it poop");
-          var infowindow = new google.maps.InfoWindow({
-            content: createEventString(event),
-          });
-          marker.addListener('click', function() {
-            infowindow.open(map, marker);
-          });
+        })
+        return events
+      };
+
+      var buildInfoWindow = function(event) {
+        var marker = new google.maps.Marker({
+          position: {
+            lat: Number(event._embedded.venues[0].location.latitude),
+            lng: Number(event._embedded.venues[0].location.longitude),
+          },
+          map: map,
+          title: event.classifications[0].genre.name,
+        });
+        var infowindow = new google.maps.InfoWindow({
+          content: createEventString(event),
+        });
+        marker.addListener('click', function() {
+          infowindow.open(map, marker);
         });
       };
 
@@ -291,12 +293,15 @@
         });
         httpGetAsync(googleGeocoderCall, function(result) {
           if (checkPostalCodeExists(result)) {
-            httpGetAsync(getTicketmasterApiAddress(result), parseTicketmasterApiResponse);
+            httpGetAsync(getTicketmasterApiAddress(result), function(result) {
+              parseTicketmasterApiResponse(result).forEach(buildInfoWindow);
+            });
           }
           else {
             httpGetAsync(reverseGeocoderQueryAddress(result), function(result) {
-              console.log("made it here");
-              httpGetAsync(getTicketmasterApiAddress(result), parseTicketmasterApiResponse);
+              httpGetAsync(getTicketmasterApiAddress(result), function(result) {
+                parseTicketmasterApiResponse(result).forEach(buildInfoWindow);
+              });
             });
           };
         })
