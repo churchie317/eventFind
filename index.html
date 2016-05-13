@@ -158,8 +158,37 @@
         mapDiv.style.boxShadow = "0px 3px 3px black";
       };
 
-      //initialize variable to store user's formatted address from geocoder
-      var userAddress;
+      var setMapZoom = function(results, resultsMap) {
+        //Get radius selection for switch statement
+        var radiusSelector = document.getElementById("radius");
+        var searchRadius = radiusSelector[radiusSelector.selectedIndex].value;
+        var radius;
+        //convert miles selected into meters
+        switch (searchRadius) {
+          case "5":
+            radius = 8047;
+            break;
+          case "10":
+            radius = 16093;
+            break;
+          case "15":
+            radius = 24140;
+            break;
+          case "20":
+            radius = 32187;
+            break;
+          };
+        // overlay invisible circle on map with radius of selectedRadius
+        var circle = new google.maps.Circle ({
+          radius: radius,
+          center: results[0].geometry.location,
+          fillOpacity: 0,
+          strokeOpacity: 0,
+          map: resultsMap,
+        });
+        // set zoom to closest zoom level that includes full circle radius
+        resultsMap.fitBounds(circle.getBounds());
+      };
 
       // locate user input on Google Map
       var geocodeAddress = function(geocoder, resultsMap) {
@@ -168,36 +197,9 @@
         // https://developers.google.com/maps/documentation/javascript/geocoding#GeocodingResponses
         geocoder.geocode({'address': address}, function(results, status) {
           if (status === google.maps.GeocoderStatus.OK) {
+            "resultsMap: " + resultsMap;
             resultsMap.setCenter(results[0].geometry.location);
-            //Get radius selection for switch statement
-            var radiusSelector = document.getElementById("radius");
-            var searchRadius = radiusSelector[radiusSelector.selectedIndex].value;
-            var radius;
-            //convert miles selected into meters
-            switch (searchRadius) {
-            	case "5":
-            		radius = 8047;
-            		break;
-            	case "10":
-            		radius = 16093;
-            		break;
-            	case "15":
-            		radius = 24140;
-            		break;
-            	case "20":
-            		radius = 32187;
-            		break;
-            	};
-            // overlay invisible circle on map with radius of selectedRadius
-    	      var circle = new google.maps.Circle ({
-    		      radius: radius,
-    		      center: results[0].geometry.location,
-    	    	  fillOpacity: 0,
-    		      strokeOpacity: 0,
-    		      map: resultsMap,
-    		    });
-    		    // set zoom to closest zoom level that includes full circle radius
-    	      resultsMap.fitBounds(circle.getBounds());
+            setMapZoom(results, resultsMap);
             var marker = new google.maps.Marker({
               map: resultsMap,
               position: results[0].geometry.location
@@ -259,6 +261,7 @@
         if (ticketmasterApiResponse._embedded === undefined) {
           document.getElementById("location-info").innerHTML = "NO RESULTS FOR: " + userAddress;
           };
+
         // filter uninteresting events like event parking from events list
         var events = ticketmasterApiResponse._embedded.events.filter(function(event) {
           if (event.classifications[0].genre.name !== "Undefined") {
@@ -268,19 +271,27 @@
         return events
       };
 
-      var buildInfoWindow = function(event) {
+      //var infowindowArray = [];
+      //var openWindow;
+      var prev_infowindow = false;
+
+      var buildInfoWindow = function(obj) {
         var marker = new google.maps.Marker({
           position: {
-            lat: Number(event._embedded.venues[0].location.latitude),
-            lng: Number(event._embedded.venues[0].location.longitude),
+            lat: Number(obj._embedded.venues[0].location.latitude),
+            lng: Number(obj._embedded.venues[0].location.longitude),
           },
           map: map,
-          title: event.classifications[0].genre.name,
-        });
-        var infowindow = new google.maps.InfoWindow({
-          content: createEventString(event),
+          title: obj.classifications[0].genre.name,
         });
         marker.addListener('click', function() {
+          var infowindow = new google.maps.InfoWindow({
+            content: createEventString(obj),
+          });
+          if (prev_infowindow) {
+            prev_infowindow.close(map, marker);
+          }
+          prev_infowindow = infowindow;
           infowindow.open(map, marker);
         });
       };
