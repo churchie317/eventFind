@@ -38,6 +38,9 @@
       // Initialize Ticketmaster API key variable
       var ticketmasterAPIKey = "apikey=czmUT7VaCKrr1WgK1oncNUaVREIzmtQz";
 
+      // initialize Eventbrite anonymous access authorization key
+      var eventbriteAPIKey = "?token=A7NZREPNELPM7FI3MWYH";
+
       // Asynchronous HTTP GET request to Ticketmaster API
       function httpGetAsync(theUrl, callback) {
           var xmlHttp = new XMLHttpRequest();
@@ -89,18 +92,27 @@
       // initialize global variable that holds request to Ticketmaster API
       var ticketmasterRequest;
 
-      // plug relevant variables into Ticketmaster search API URL
-      var buildTicketmasterRequest = function(postalCode, startDate, endDate, APIkey) {
+      // plug variables into Ticketmaster search API URL
+      var buildTicketmasterRequest = function(postalCode, startDate, endDate, apiKey) {
         console.log("todayDateFormatted: " + todayDateFormatted);
         console.log("tomorrowDateFormatted: " + tomorrowDateFormatted);
         // retrieve radius of search area
         var radiusSelector = document.getElementById("radius");
         var searchRadius = radiusSelector[radiusSelector.selectedIndex].value;
-        console.log("searchRadius: " + searchRadius);
         ticketmasterRequest = "https://app.ticketmaster.com/discovery/v2/events.json?postalCode=" + postalCode + "&radius=" + searchRadius + "&unit=miles&startDateTime="
-          + startDate + "&endDateTime=" + endDate + "&" + APIkey;
+          + startDate + "&endDateTime=" + endDate + "&" + apiKey;
         return ticketmasterRequest;
       };
+
+      // plug variables into Eventbrite search API URL
+      var buildEventbriteRequest = function(postalCode, startDate, endDate) {
+        var radiusSelector = document.getElementById("radius");
+        var searchRadius = radiusSelector[radiusSelector.selectedIndex].value;
+        eventbriteRequest = "https://www.eventbriteapi.com/v3/events/search/" + eventbriteAPIKey + "&location.address=" + postalCode + "&location.within=" + searchRadius
+          + "mi&start_date.range_start=" + startDate + "&start_date.range_end=" + endDate;
+        console.log(eventbriteRequest);
+        return eventbriteRequest
+      }
 
       // check for existence of postal code in object
       var checkPostalCodeExists = function(addressJSON) {
@@ -248,21 +260,31 @@
 
       var ticketmasterApiResponse;
 
-      var getTicketmasterApiAddress = function(result) {
+      var getApiAddress = function(result, f) {
         var postalCode = getPostalCode(result);
-        return buildTicketmasterRequest(postalCode, todayDateFormatted, tomorrowDateFormatted, ticketmasterAPIKey);
+        return f(postalCode, todayDateFormatted, tomorrowDateFormatted, ticketmasterAPIKey);
+      };
+
+      var parseEventbriteResponse = function(result) {
+        // parse Eventbrite API response
+        eventbriteApiResponse = JSON.parse(result);
+        // filter uninteresting events such as "event parking" from events list
+        var events = eventbriteApiResponse.events_embedded.events.filter(function(event) {
+          if (event.classifications[0].genre.name !== "Undefined") {
+            return event;
+          };
+        })
+        return events
       };
 
       var parseTicketmasterApiResponse = function(result) {
         // parse Ticketmaster API response
         ticketmasterApiResponse = JSON.parse(result);
-        console.log(ticketmasterApiResponse);
         // tell user if no results found
         if (ticketmasterApiResponse._embedded === undefined) {
           document.getElementById("location-info").innerHTML = "NO RESULTS FOR: " + userAddress;
           };
-
-        // filter uninteresting events like event parking from events list
+        // filter uninteresting events such as "event parking" from events list
         var events = ticketmasterApiResponse._embedded.events.filter(function(event) {
           if (event.classifications[0].genre.name !== "Undefined") {
             return event;
@@ -271,11 +293,10 @@
         return events
       };
 
-      //var infowindowArray = [];
-      //var openWindow;
+      // initialize boolean test to hold previously opened infowindow
       var prev_infowindow = false;
 
-      var buildInfoWindow = function(obj) {
+      var buildTicketmasterInfoWindow = function(obj) {
         var marker = new google.maps.Marker({
           position: {
             lat: Number(obj._embedded.venues[0].location.latitude),
@@ -304,14 +325,19 @@
         });
         httpGetAsync(googleGeocoderCall, function(result) {
           if (checkPostalCodeExists(result)) {
-            httpGetAsync(getTicketmasterApiAddress(result), function(result) {
-              parseTicketmasterApiResponse(result).forEach(buildInfoWindow);
+            httpGetAsync(getApiAddress(result, buildEventbriteRequest), function(result) {
+              JSON.parse(result).events.forEach(function(event) {
+                httpGetAsync();
+              });
+            });
+            httpGetAsync(getApiAddress(result, buildTicketmasterRequest), function(result) {
+              parseTicketmasterApiResponse(result).forEach(buildTicketmasterInfoWindow);
             });
           }
           else {
             httpGetAsync(reverseGeocoderQueryAddress(result), function(result) {
-              httpGetAsync(getTicketmasterApiAddress(result), function(result) {
-                parseTicketmasterApiResponse(result).forEach(buildInfoWindow);
+              httpGetAsync(getApiAddress(result, buildTicketmasterRequest), function(result) {
+                parseTicketmasterApiResponse(result).forEach(buildTicketmasterInfoWindow);
               });
             });
           };
