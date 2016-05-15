@@ -79,8 +79,8 @@
         return d;
       };
 
-      var todayDateFormatted = "2016-05-13T00:00:00Z"// formatDate(getTodayDate());
-      var tomorrowDateFormatted = "2016-05-15T00:00:00Z"// formatDate(getTomorrowDate());
+      var todayDateFormatted = formatDate(getTodayDate());
+      var tomorrowDateFormatted = formatDate(getTomorrowDate());
 
       // parse user input from textbox into array delimited by space-character
       var parseInput = function(input) {
@@ -109,7 +109,7 @@
         var radiusSelector = document.getElementById("radius");
         var searchRadius = radiusSelector[radiusSelector.selectedIndex].value;
         eventbriteRequest = "https://www.eventbriteapi.com/v3/events/search/" + eventbriteAPIKey + "&location.address=" + postalCode + "&location.within=" + searchRadius
-          + "mi&start_date.range_start=" + startDate + "&start_date.range_end=" + endDate;
+          + "mi&start_date.range_start=" + startDate + "&start_date.range_end=" + endDate + "&expand=venue,category,subcategory";
         console.log(eventbriteRequest);
         return eventbriteRequest
       }
@@ -242,7 +242,7 @@
       };
 
       // create string to populate infowindow
-      var createEventString = function(obj) {
+      var createTicketmasterEventString = function(obj) {
         var contentString = '<div id="content" font-family = "Cabin" sans-serif>' + '<div id="siteNotice">' + '</div>' +
           '<p><b>Event</b>: %event%</p>' +
           '<p><b>Genre</b>: %genre%</p>' +
@@ -253,6 +253,28 @@
           var eventName = obj.name;
           var eventGenre = obj.classifications[0].genre.name;
           var eventVenue = obj._embedded.venues[0].name;
+          var eventUrl = obj.url;
+          var displayString = contentString.replace("%event%", eventName).replace("%genre%", eventGenre).replace("%venue%", eventVenue).replace("%url%", eventUrl);
+          return displayString;
+      };
+
+      var createEventbriteEventString = function(obj) {
+        var contentString = '<div id="content" font-family = "Cabin" sans-serif>' + '<div id="siteNotice">' + '</div>' +
+          '<p><b>Event</b>: %event%</p>' +
+          '<p><b>Genre</b>: %genre%</p>' +
+          '<p><b>Venue</b>: %venue%</p>' +
+          '<p><a href=%url%><b>URL</b></a></p>' +
+          '</div>'+
+          '</div>';
+          var eventName = obj.name.text;
+          var eventGenre;
+          if (obj.subcategory !== null) {
+            eventGenre = obj.subcategory.name;
+          }
+          else {
+            eventGenre = obj.category.name;
+          }
+          var eventVenue = obj.venue.name;
           var eventUrl = obj.url;
           var displayString = contentString.replace("%event%", eventName).replace("%genre%", eventGenre).replace("%venue%", eventVenue).replace("%url%", eventUrl);
           return displayString;
@@ -305,9 +327,32 @@
           map: map,
           title: obj.classifications[0].genre.name,
         });
+        console.log("Ticketmaster lat: " + Number(obj._embedded.venues[0].location.latitude) + ", lng: " + Number(obj._embedded.venues[0].location.longitude));
         marker.addListener('click', function() {
           var infowindow = new google.maps.InfoWindow({
-            content: createEventString(obj),
+            content: createTicketmasterEventString(obj),
+          });
+          if (prev_infowindow) {
+            prev_infowindow.close(map, marker);
+          }
+          prev_infowindow = infowindow;
+          infowindow.open(map, marker);
+        });
+      };
+
+      var buildEventbriteInfoWindow = function(obj) {
+        var marker = new google.maps.Marker({
+          position: {
+            lat: Number(obj.venue.latitude),
+            lng: Number(obj.venue.longitude),
+          },
+          map: map,
+          title: obj.name.text,
+        });
+        console.log("Eventbrite lat: " + Number(obj.venue.latitude) + ", lng: " + Number(obj.venue.longitude));
+        marker.addListener('click', function() {
+          var infowindow = new google.maps.InfoWindow({
+            content: createEventbriteEventString(obj),
           });
           if (prev_infowindow) {
             prev_infowindow.close(map, marker);
@@ -325,19 +370,20 @@
         });
         httpGetAsync(googleGeocoderCall, function(result) {
           if (checkPostalCodeExists(result)) {
-            httpGetAsync(getApiAddress(result, buildEventbriteRequest), function(result) {
-              JSON.parse(result).events.forEach(function(event) {
-                httpGetAsync();
-              });
-            });
             httpGetAsync(getApiAddress(result, buildTicketmasterRequest), function(result) {
               parseTicketmasterApiResponse(result).forEach(buildTicketmasterInfoWindow);
+            });
+            httpGetAsync(getApiAddress(result, buildEventbriteRequest), function(result) {
+              JSON.parse(result).events.forEach(buildEventbriteInfoWindow);
             });
           }
           else {
             httpGetAsync(reverseGeocoderQueryAddress(result), function(result) {
               httpGetAsync(getApiAddress(result, buildTicketmasterRequest), function(result) {
                 parseTicketmasterApiResponse(result).forEach(buildTicketmasterInfoWindow);
+              });
+              httpGetAsync(getApiAddress(result, buildEventbriteRequest), function(result) {
+                JSON.parse(result).events.forEach(buildEventbriteInfoWindow);
               });
             });
           };
