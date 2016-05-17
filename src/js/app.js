@@ -231,11 +231,14 @@ var createEventbriteEventString = function(obj) {
     '</div>';
     var eventName = obj.name.text;
     var eventGenre;
-    if (obj.subcategory !== null) {
+    if (obj.subcategory) {
       eventGenre = obj.subcategory.name;
     }
-    else {
+    else if (obj.category){
       eventGenre = obj.category.name;
+    }
+    else {
+      eventGenre = "Unspecified";
     }
     var eventVenue = obj.venue.name;
     var eventUrl = obj.url;
